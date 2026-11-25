@@ -1,0 +1,270 @@
+import java.util.*;
+import java.time.*;
+import java.time.format.DateTimeFormatter;
+
+class Notification {
+    int id;
+    String title;
+    String message;
+    LocalDateTime dateTime;
+    String priority;
+    String status;
+
+    Notification(int id, String title, String message,
+                 LocalDateTime dateTime, String priority) {
+        this.id = id;
+        this.title = title;
+        this.message = message;
+        this.dateTime = dateTime;
+        this.priority = priority;
+        this.status = "PENDING";
+    }
+
+    public String toString() {
+        return "\nID: " + id +
+               "\nTitle: " + title +
+               "\nMessage: " + message +
+               "\nDate: " + dateTime +
+               "\nPriority: " + priority +
+               "\nStatus: " + status;
+    }
+}
+
+class NotificationService {
+
+    PriorityQueue<Notification> queue;
+    HashMap<Integer, Notification> map;
+    int id = 1;
+
+    NotificationService() {
+        queue = new PriorityQueue<>(
+            Comparator.comparing((Notification n) -> n.dateTime)
+            .thenComparingInt(n ->
+                n.priority.equalsIgnoreCase("HIGH") ? 1 :
+                n.priority.equalsIgnoreCase("MEDIUM") ? 2 : 3)
+        );
+
+        map = new HashMap<>();
+    }
+
+    void addNotification(String title, String message,
+                         LocalDateTime date, String priority) {
+
+        Notification n = new Notification(
+            id++, title, message, date, priority
+        );
+
+        queue.add(n);
+        map.put(n.id, n);
+
+        System.out.println("Notification Added Successfully!");
+        System.out.println("Notification ID: " + n.id);
+    }
+
+    void viewNotifications() {
+        if (map.isEmpty()) {
+            System.out.println("No Notifications Found!");
+            return;
+        }
+
+        for (Notification n : map.values()) {
+            System.out.println(n);
+        }
+    }
+
+    void searchNotification(int id) {
+        Notification n = map.get(id);
+
+        if (n == null) {
+            System.out.println("Notification Not Found!");
+        } else {
+            System.out.println(n);
+        }
+    }
+
+    void updateNotification(int id, String title, String message) {
+        Notification n = map.get(id);
+
+        if (n == null || !n.status.equals("PENDING")) {
+            System.out.println("Pending Notification Not Found!");
+            return;
+        }
+
+        n.title = title;
+        n.message = message;
+
+        System.out.println("Notification Updated Successfully!");
+    }
+
+    void rescheduleNotification(int id, LocalDateTime date) {
+        Notification n = map.get(id);
+
+        if (n == null || !n.status.equals("PENDING")
+                || !date.isAfter(LocalDateTime.now())) {
+            System.out.println("Invalid Notification or Date!");
+            return;
+        }
+
+        queue.remove(n);
+        n.dateTime = date;
+        queue.add(n);
+
+        System.out.println("Notification Rescheduled Successfully!");
+    }
+
+    void cancelNotification(int id) {
+        Notification n = map.get(id);
+
+        if (n == null || !n.status.equals("PENDING")) {
+            System.out.println("Notification Not Found!");
+            return;
+        }
+
+        queue.remove(n);
+        n.status = "CANCELLED";
+
+        System.out.println("Notification Cancelled Successfully!");
+    }
+
+    void processDueNotifications() {
+        boolean found = false;
+
+        while (!queue.isEmpty() &&
+               !queue.peek().dateTime.isAfter(LocalDateTime.now())) {
+
+            Notification n = queue.poll();
+
+            n.status = "COMPLETED";
+            found = true;
+
+            System.out.println("\nNOTIFICATION TRIGGERED!");
+            System.out.println(n);
+        }
+
+        if (!found) {
+            System.out.println("No Notifications Due Yet!");
+        }
+    }
+}
+
+public class Main {
+
+    public static void main(String[] args) {
+
+        Scanner sc = new Scanner(System.in);
+        NotificationService service = new NotificationService();
+
+        DateTimeFormatter formatter =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+
+        while (true) {
+
+            System.out.println("\n===== SMART NOTIFICATION SCHEDULER =====");
+            System.out.println("1. Add Notification");
+            System.out.println("2. View All Notifications");
+            System.out.println("3. Search Notification");
+            System.out.println("4. Update Notification");
+            System.out.println("5. Reschedule Notification");
+            System.out.println("6. Cancel Notification");
+            System.out.println("7. Process Due Notifications");
+            System.out.println("8. Exit");
+
+            System.out.print("Enter Choice: ");
+
+            try {
+                int choice = Integer.parseInt(sc.nextLine());
+
+                switch (choice) {
+
+                    case 1:
+                        System.out.print("Enter Title: ");
+                        String title = sc.nextLine();
+
+                        System.out.print("Enter Message: ");
+                        String message = sc.nextLine();
+
+                        System.out.print("Enter Date and Time (yyyy-MM-dd HH:mm): ");
+                        LocalDateTime date =
+                            LocalDateTime.parse(sc.nextLine(), formatter);
+
+                        System.out.print("Enter Priority (HIGH/MEDIUM/LOW): ");
+                        String priority = sc.nextLine().toUpperCase();
+
+                        if (title.isBlank() || message.isBlank()
+                                || !date.isAfter(LocalDateTime.now())
+                                || !Arrays.asList("HIGH", "MEDIUM", "LOW")
+                                .contains(priority)) {
+                            System.out.println("Invalid Input!");
+                            break;
+                        }
+
+                        service.addNotification(
+                            title, message, date, priority
+                        );
+                        break;
+
+                    case 2:
+                        service.viewNotifications();
+                        break;
+
+                    case 3:
+                        System.out.print("Enter Notification ID: ");
+                        service.searchNotification(
+                            Integer.parseInt(sc.nextLine())
+                        );
+                        break;
+
+                    case 4:
+                        System.out.print("Enter Notification ID: ");
+                        int updateId = Integer.parseInt(sc.nextLine());
+
+                        System.out.print("Enter New Title: ");
+                        String newTitle = sc.nextLine();
+
+                        System.out.print("Enter New Message: ");
+                        String newMessage = sc.nextLine();
+
+                        service.updateNotification(
+                            updateId, newTitle, newMessage
+                        );
+                        break;
+
+                    case 5:
+                        System.out.print("Enter Notification ID: ");
+                        int rescheduleId = Integer.parseInt(sc.nextLine());
+
+                        System.out.print("Enter New Date and Time: ");
+                        LocalDateTime newDate =
+                            LocalDateTime.parse(sc.nextLine(), formatter);
+
+                        service.rescheduleNotification(
+                            rescheduleId, newDate
+                        );
+                        break;
+
+                    case 6:
+                        System.out.print("Enter Notification ID: ");
+                        service.cancelNotification(
+                            Integer.parseInt(sc.nextLine())
+                        );
+                        break;
+
+                    case 7:
+                        service.processDueNotifications();
+                        break;
+
+                    case 8:
+                        System.out.println("Thank You for Using Smart Notification Scheduler!");
+                        sc.close();
+                        return;
+
+                    default:
+                        System.out.println("Invalid Choice!");
+                }
+
+            } catch (Exception e) {
+                System.out.println("Invalid Input! Please Try Again.");
+            }
+        }
+    }
+}
